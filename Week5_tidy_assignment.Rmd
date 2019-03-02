@@ -1,0 +1,132 @@
+---
+title: "DATA607 Week 5 Assignment"
+author: "ODONNELL"
+date: "February 26, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+First, import needed libraries
+```{r}
+library(readr)
+library(tidyr)
+library(dplyr)
+```
+
+Now, load the data just as it was posted
+And, view it.
+```{r}
+flights <- read_csv("week5_assignment_data.csv")
+show(flights)
+```
+
+OK, the data's pretty messy so:
+1. rename column 1
+2. rename column 2
+3. delete empty row
+4. fill in empty cells
+```{r}
+names(flights)[1]<-"Airline"
+
+names(flights)[2]<-"Arrival_Status"
+
+flights <- flights[-c(3),]
+
+flights[2, "Airline"] <- "ALASKA"
+flights[4, "Airline"] <- "AM WEST"
+```
+
+Now, start tidying the data with tidyr and dplyr
+First, gather the city columns together and arrange them
+```{r}
+flights <- gather(flights, "Arrival_City", "Freq", 3:7)
+flights <- arrange(flights, Airline)
+
+show(flights)
+```
+
+Quickly, lets make sure all the columns are appropriate data types
+```{r}
+str(flights)
+```
+
+
+
+--------------------------------------------------------------------
+Now, lets use tidyr and dyplr to do some analysis:
+First, lets compare the total number of flights between the airlines
+```{r}
+flights %>%
+  group_by(Airline) %>%
+  summarise(total_flights = sum(Freq))
+```
+
+
+Next, lets compare percentage of delayed flights between ALASKA and AM WEST
+```{r}
+flights %>%
+  filter(Airline == 'ALASKA') %>%
+  group_by(Arrival_Status) %>%
+  summarise(total_flights = sum(Freq), percentage = sum(Freq)/sum(subset(flights, Airline == 'ALASKA')$Freq))
+
+flights %>%
+  filter(Airline == 'AM WEST') %>%
+  group_by(Arrival_Status) %>%
+  summarise(total_flights = sum(Freq), percentage = sum(Freq)/sum(subset(flights, Airline == 'AM WEST')$Freq))
+```
+
+Next, lets compare percentage of delayed flights between ALASKA and AM WEST
+by arrival city. There may be variance among cities.
+```{r}
+cities <- spread(flights, "Arrival_City", "Freq") %>%
+  filter(Airline == "ALASKA")
+cities <- mutate(cities, Seattle = Seattle/sum(subset(flights, Airline == 'ALASKA' & Arrival_City == "Seattle")$Freq))
+cities <- mutate(cities, `Los Angeles` = `Los Angeles`/sum(subset(flights, Airline == 'ALASKA' & Arrival_City == "Los Angeles")$Freq))
+cities <- mutate(cities, Phoenix = Phoenix/sum(subset(flights, Airline == 'ALASKA' & Arrival_City == "Phoenix")$Freq))
+cities <- mutate(cities, `San Diego` = `San Diego`/sum(subset(flights, Airline == 'ALASKA' & Arrival_City == "San Diego")$Freq))
+cities <- mutate(cities, `San Francisco` = `San Francisco`/sum(subset(flights, Airline == 'ALASKA' & Arrival_City == "San Francisco")$Freq))
+
+cities_amwest <- spread(flights, "Arrival_City", "Freq") %>%
+  filter(Airline == "AM WEST")
+cities_amwest <- mutate(cities_amwest, Seattle = Seattle/sum(subset(flights, Airline == 'AM WEST' & Arrival_City == "Seattle")$Freq))
+cities_amwest <- mutate(cities_amwest, `Los Angeles` = `Los Angeles`/sum(subset(flights, Airline == 'AM WEST' & Arrival_City == "Los Angeles")$Freq))
+cities_amwest <- mutate(cities_amwest, Phoenix = Phoenix/sum(subset(flights, Airline == 'AM WEST' & Arrival_City == "Phoenix")$Freq))
+cities_amwest <- mutate(cities_amwest, `San Diego` = `San Diego`/sum(subset(flights, Airline == 'AM WEST' & Arrival_City == "San Diego")$Freq))
+cities_amwest <- mutate(cities_amwest, `San Francisco` = `San Francisco`/sum(subset(flights, Airline == 'AM WEST' & Arrival_City == "San Francisco")$Freq))
+
+#cities
+#cities_amwest
+
+cities <- bind_rows(cities, cities_amwest)
+cities <- cities[-c(2,4),]
+
+cities
+```
+
+Now, lets compare the amount of flights to each
+Arrival City between the Airlines
+```{r}
+flights %>%
+  filter(Airline == 'ALASKA') %>%
+  group_by(Arrival_City) %>%
+  summarise(total_flights = sum(Freq), percentage = sum(Freq)/sum(subset(flights, Airline == 'ALASKA')$Freq))
+
+flights %>%
+  filter(Airline == 'AM WEST') %>%
+  group_by(Arrival_City) %>%
+  summarise(total_flights = sum(Freq), percentage = sum(Freq)/sum(subset(flights, Airline == 'AM WEST')$Freq))
+```
+
+Conclusions:
+1. AM WEST has 3432 more flights in the dataset than ALASKA
+2. The airline ALASKA, has 2.79% more delayed flights overall than AM WEST
+3. Among cities, the airlines have very different percentages of delayed flights,
+  for example, AM WEST has 9.5% more delayed flights into San Francisco than ALASKA
+4. In this dataset, the airlines have a different distribution of flights into
+  each city. or example, ALAKSA mostly flys into San Francisco while AM WEST
+  mostly flys into Pheonix.
+  
+Note: all conclusions made based on the 4 R chunks above!
